@@ -15,7 +15,7 @@ ENV JAVA_HOME /usr/lib/jvm/java-11-openjdk-amd64/
 RUN export JAVA_HOME
 
 # Install Spark
-ENV SPARK_VERSION=3.5.0
+ENV SPARK_VERSION=3.4.1
 ENV HADOOP_VERSION=3
 ENV SPARK_HOME=/opt/spark
 
