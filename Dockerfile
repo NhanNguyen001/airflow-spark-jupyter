@@ -1,17 +1,33 @@
-FROM apache/airflow:slim-2.10.1-python3.12
+# FROM apache/airflow:latest-python3.12
+FROM apache/airflow
 
 USER root
 
 # Set Airflow base URL
 ENV AIRFLOW__WEBSERVER__BASE_URL=/airflow
 
-# Install OpenJDK-11
-RUN apt-get update && \
-    apt-get install -y openjdk-11-jdk && \
-    apt-get clean;
+# Install OpenJDK-8
+# RUN sudo apt-get update && \
+#     sudo apt-get install -y software-properties-common && \
+#     sudo apt-add-repository 'deb http://ftp.de.debian.org/debian sid main' && \
+#     sudo apt update --allow-unauthenticated && \
+#     apt-get install -y openjdk-11-jdk && \
+#     apt-get clean;
+
+# # Set JAVA_HOME
+# ENV JAVA_HOME /usr/lib/jvm/java-11-openjdk-amd64/
+# RUN export JAVA_HOME
+
+# Install OpenJDK-8
+RUN sudo apt-get update && \
+    sudo apt-get install -y software-properties-common && \
+    sudo apt-add-repository 'deb http://ftp.de.debian.org/debian sid main' && \
+    sudo apt update --allow-unauthenticated && \
+    sudo apt-get install -y openjdk-8-jdk && \
+    sudo apt-get clean;
 
 # Set JAVA_HOME
-ENV JAVA_HOME /usr/lib/jvm/java-11-openjdk-amd64/
+ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64
 RUN export JAVA_HOME
 
 # Install Spark
