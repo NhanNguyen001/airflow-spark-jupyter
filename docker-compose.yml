@@ -5,7 +5,7 @@ x-spark-common: &spark-common
   volumes:
     - ./jobs:/opt/bitnami/spark/jobs
   networks:
-    - code-with-yu
+    - code-with-deposit
 
 services:
   spark-master:
@@ -26,6 +26,31 @@ services:
       SPARK_WORKER_MEMORY: 1g
       SPARK_MASTER_URL: spark://spark-master:7077
 
+  # airflow-init:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   entrypoint: /bin/bash
+  #   command:
+  #     - -c
+  #     - |
+  #       airflow db init &&
+  #       airflow users create \
+  #         --username admin \
+  #         --firstname Admin \
+  #         --lastname User \
+  #         --role Admin \
+  #         --email admin@example.com \
+  #         --password admin &&
+  #       airflow db check
+  #   environment:
+  #     - AIRFLOW__CORE__LOAD_EXAMPLES=False
+  #   healthcheck:
+  #     test: ["CMD", "airflow", "db", "check"]
+  #     interval: 10s
+  #     timeout: 10s
+  #     retries: 5
+
   webserver:
     build:
       context: .
@@ -37,7 +62,7 @@ services:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
     networks:
-      - code-with-yu
+      - code-with-deposit
 
   scheduler:
     build:
@@ -48,7 +73,7 @@ services:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
     networks:
-      - code-with-yu
+      - code-with-deposit
 
   jupyter:
     build:
@@ -60,7 +85,7 @@ services:
     volumes:
       - ./notebooks:/home/airflow/notebooks
     networks:
-      - code-with-yu
+      - code-with-deposit
 
 networks:
-  code-with-yu:
+  code-with-deposit:

@@ -1,34 +1,14 @@
 FROM apache/airflow:latest-python3.12
-# FROM apache/airflow
 
 USER root
-
-# Copy entrypoint script
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
 
 # Set Airflow base URL
 ENV AIRFLOW__WEBSERVER__BASE_URL=/airflow
 
 # Install OpenJDK-8
-# RUN sudo apt-get update && \
-#     sudo apt-get install -y software-properties-common && \
-#     sudo apt-add-repository 'deb http://ftp.de.debian.org/debian sid main' && \
-#     sudo apt update --allow-unauthenticated && \
-#     apt-get install -y openjdk-11-jdk && \
-#     apt-get clean;
-
-# # Set JAVA_HOME
-# ENV JAVA_HOME /usr/lib/jvm/java-11-openjdk-amd64/
-# RUN export JAVA_HOME
-
-# Install OpenJDK-8
-RUN sudo apt-get update && \
-    sudo apt-get install -y software-properties-common && \
-    sudo apt-add-repository 'deb http://ftp.de.debian.org/debian sid main' && \
-    sudo apt update --allow-unauthenticated && \
-    sudo apt-get install -y openjdk-8-jdk && \
-    sudo apt-get clean;
+RUN apt-get update && \
+    apt-get install -y openjdk-8-jdk && \
+    apt-get clean;
 
 # Set JAVA_HOME
 ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64
@@ -66,10 +46,14 @@ RUN pip install --no-cache-dir \
     matplotlib \
     seaborn
 
-# Configure Jupyter for base URL
+# Configure Jupyter with password
 RUN mkdir -p /home/airflow/.jupyter
+RUN jupyter notebook --generate-config
+RUN python -c "from jupyter_server.auth import passwd; print(passwd('your_password_here'))" > /tmp/jupyter_password
+RUN echo "c.NotebookApp.password = u'$(cat /tmp/jupyter_password)'" >> /home/airflow/.jupyter/jupyter_notebook_config.py
 RUN echo "c.NotebookApp.base_url = '/jupyter'" >> /home/airflow/.jupyter/jupyter_notebook_config.py
 RUN echo "c.NotebookApp.allow_origin = '*'" >> /home/airflow/.jupyter/jupyter_notebook_config.py
+RUN rm /tmp/jupyter_password
 
 # Install additional Airflow providers
 RUN pip install --no-cache-dir \
@@ -78,6 +62,3 @@ RUN pip install --no-cache-dir \
 
 # Set the working directory
 WORKDIR /opt/airflow
-
-# Set the entrypoint
-ENTRYPOINT ["/entrypoint.sh"]
