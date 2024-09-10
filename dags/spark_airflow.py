@@ -1,51 +1,56 @@
 import airflow
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
+from airflow.models import Connection
+from airflow import settings
+import subprocess
+import os
+
+# # Create Spark connection
+# spark_conn = Connection(
+#     conn_id="spark-conn",
+#     conn_type="spark",
+#     host="spark://spark-master",
+#     port=7077
+# )
+
+# # Add the connection to the session
+# session = settings.Session()
+# session.add(spark_conn)
+# session.commit()
 
 dag = DAG(
-    dag_id = "sparking_flow",
-    default_args = {
-        "owner": "Yusuf Ganiyu",
+    dag_id="sparking_flow",
+    default_args={
+        "owner": "nhannt22@hdbank.com.vn",
         "start_date": airflow.utils.dates.days_ago(1)
     },
-    schedule_interval = "@daily"
+    schedule_interval="@daily"
 )
 
-start = PythonOperator(
-    task_id="start",
-    python_callable = lambda: print("Jobs started"),
-    dag=dag
-)
+def run_spark_job():
+    script_path = os.path.join(os.environ.get('AIRFLOW_HOME', ''), 'jobs', 'python', 'wordcountjob.py')
+    result = subprocess.run(['python', script_path], capture_output=True, text=True)
+    print(result.stdout)
+    if result.returncode != 0:
+        raise Exception(f"Spark job failed: {result.stderr}")
 
-python_job = SparkSubmitOperator(
+# start = PythonOperator(
+#     task_id="start",
+#     python_callable=lambda: print("Jobs started"),
+#     dag=dag
+# )
+
+python_job = PythonOperator(
     task_id="python_job",
-    conn_id="spark-conn",
-    application="jobs/python/wordcountjob.py",
+    python_callable=run_spark_job,
     dag=dag
 )
 
-# scala_job = SparkSubmitOperator(
-#     task_id="scala_job",
-#     conn_id="spark-conn",
-#     application="jobs/scala/target/scala-2.12/word-count_2.12-0.1.jar",
+# end = PythonOperator(
+#     task_id="end",
+#     python_callable=lambda: print("Jobs completed successfully"),
 #     dag=dag
 # )
 
-# java_job = SparkSubmitOperator(
-#     task_id="java_job",
-#     conn_id="spark-conn",
-#     application="jobs/java/spark-job/target/spark-job-1.0-SNAPSHOT.jar",
-#     java_class="com.airscholar.spark.WordCountJob",
-#     dag=dag
-# )
-
-
-end = PythonOperator(
-    task_id="end",
-    python_callable = lambda: print("Jobs completed successfully"),
-    dag=dag
-)
-
-start >> [python_job ] >> end
-    #   scala_job, java_job] >> end
+python_job

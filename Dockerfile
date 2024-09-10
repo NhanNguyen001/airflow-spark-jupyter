@@ -1,5 +1,4 @@
-FROM apache/airflow:latest-python3.12
-# FROM apache/airflow
+FROM apache/airflow:slim-latest-python3.11
 
 USER root
 
@@ -11,73 +10,81 @@ RUN chmod +x /entrypoint.sh
 ENV AIRFLOW__WEBSERVER__BASE_URL=/airflow
 
 # Install OpenJDK-8
-# RUN sudo apt-get update && \
-#     sudo apt-get install -y software-properties-common && \
-#     sudo apt-add-repository 'deb http://ftp.de.debian.org/debian sid main' && \
-#     sudo apt update --allow-unauthenticated && \
-#     apt-get install -y openjdk-11-jdk && \
-#     apt-get clean;
-
-# # Set JAVA_HOME
-# ENV JAVA_HOME /usr/lib/jvm/java-11-openjdk-amd64/
-# RUN export JAVA_HOME
-
-# Install OpenJDK-8
-RUN sudo apt-get update && \
-    sudo apt-get install -y software-properties-common && \
-    sudo apt-add-repository 'deb http://ftp.de.debian.org/debian sid main' && \
-    sudo apt update --allow-unauthenticated && \
-    sudo apt-get install -y openjdk-8-jdk && \
-    sudo apt-get clean;
-
-# Set JAVA_HOME
-ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64
-RUN export JAVA_HOME
+RUN apt-get update && \
+    apt-get install -y build-essential && \
+    apt-get install -y gcc && \
+    apt-get install -y software-properties-common && \
+    apt-add-repository 'deb http://ftp.de.debian.org/debian sid main' && \
+    apt update --allow-unauthenticated && \
+    apt-get install -y openjdk-8-jdk && \
+    apt-get clean
 
 # Install Spark
 ENV SPARK_VERSION=3.4.1
 ENV HADOOP_VERSION=3
 ENV SPARK_HOME=/opt/spark
 
+# RUN mkdir -p ${SPARK_HOME} && \
+#     curl -sL https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz | tar -xz -C ${SPARK_HOME} --strip-components=1
+# Copy Spark source file from current directory
+COPY ./source/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz /tmp/
+
+# Create Spark directory and extract the archive
 RUN mkdir -p ${SPARK_HOME} && \
-    curl -sL https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz | tar -xz -C ${SPARK_HOME} --strip-components=1
+    tar -xzf /tmp/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz -C ${SPARK_HOME} --strip-components=1 && \
+    rm /tmp/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz
 
 # Set Spark environment variables
-ENV PATH=$PATH:${SPARK_HOME}/bin
-ENV PYTHONPATH=$SPARK_HOME/python:$SPARK_HOME/python/lib/py4j-0.10.9.7-src.zip:$PYTHONPATH
+# ENV PATH=$PATH:${SPARK_HOME}/bin
 
-# Download JDBC driver
-RUN curl -O https://jdbc.postgresql.org/download/postgresql-42.6.0.jar && \
-    mv postgresql-42.6.0.jar ${SPARK_HOME}/jars/
+# # Download JDBC driver
+# RUN curl -O https://jdbc.postgresql.org/download/postgresql-42.6.0.jar && \
+#     mv postgresql-42.6.0.jar ${SPARK_HOME}/jars/
 
 USER airflow
+
+# Install JPype1 separately with specific version
+# RUN pip install --no-cache-dir JPype1==1.4.1
 
 # Install PySpark, JDBC, and Delta Lake dependencies
 RUN pip install --no-cache-dir \
     pyspark[sql]==${SPARK_VERSION} \
     delta-spark==2.4.0 \
-    psycopg2-binary
-
-# Install Jupyter and related packages
-RUN pip install --no-cache-dir \
+    psycopg2-binary \
+    notebook \
     jupyter \
     jupyterlab \
     pandas \
-    matplotlib \
-    seaborn
-
-# Configure Jupyter for base URL
-RUN mkdir -p /home/airflow/.jupyter
-RUN echo "c.NotebookApp.base_url = '/jupyter'" >> /home/airflow/.jupyter/jupyter_notebook_config.py
-RUN echo "c.NotebookApp.allow_origin = '*'" >> /home/airflow/.jupyter/jupyter_notebook_config.py
-
-# Install additional Airflow providers
-RUN pip install --no-cache-dir \
+    apache-airflow \
     apache-airflow-providers-apache-spark \
     apache-airflow-providers-jdbc
 
+        
+ENV JAVA_HOME /usr/lib/jvm/java-1.8.0-openjdk-arm64
+RUN export JAVA_HOME
+ENV PATH $PATH:$JAVA_HOME/bin
+ENV PATH=$PATH:$JAVA_HOME/bin:$SPARK_HOME/bin
+ENV PYTHONPATH=$SPARK_HOME/python:$SPARK_HOME/python/lib/py4j-0.10.9.7-src.zip:$PYTHONPATH
+ENV PYTHONPATH $SPARK_HOME/python:$SPARK_HOME/python/lib/py4j-0.10.9-src.zip:$PYTHONPATH
+ENV SPARK_MASTER=spark://spark-master:7077
+
+# Generate default Airflow config
+# RUN airflow config list > /opt/airflow/airflow.cfg
+
+# Copy DAGs to the DAGs folder
+COPY dags/ /opt/airflow/dags/
+COPY jobs/ /opt/airflow/jobs/
+COPY airflow.cfg /opt/airflow/airflow.cfg
+
 # Set the working directory
 WORKDIR /opt/airflow
+
+# Configure Jupyter for base URL
+RUN mkdir -p /home/airflow/.jupyter
+
+RUN echo "c.NotebookApp.base_url = '/jupyter'" >> /home/airflow/.jupyter/jupyter_notebook_config.py
+RUN echo "c.NotebookApp.allow_origin = '*'" >> /home/airflow/.jupyter/jupyter_notebook_config.py
+RUN echo "c.NotebookApp.disable_check_xsrf = True" >> /home/airflow/.jupyter/jupyter_notebook_config.py
 
 # Set the entrypoint
 ENTRYPOINT ["/entrypoint.sh"]

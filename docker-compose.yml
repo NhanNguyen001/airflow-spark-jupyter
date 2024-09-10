@@ -1,7 +1,7 @@
 version: "3"
 
 x-spark-common: &spark-common
-  image: bitnami/spark:latest
+  image: bitnami/spark:3.4
   volumes:
     - ./jobs:/opt/bitnami/spark/jobs
   networks:
@@ -22,70 +22,53 @@ services:
       - spark-master
     environment:
       SPARK_MODE: worker
-      SPARK_WORKER_CORES: 2
+      SPARK_WORKER_CORES: 4
       SPARK_WORKER_MEMORY: 1g
       SPARK_MASTER_URL: spark://spark-master:7077
-
-  # airflow-init:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile
-  #   entrypoint: /bin/bash
-  #   command:
-  #     - -c
-  #     - |
-  #       airflow db init &&
-  #       airflow users create \
-  #         --username admin \
-  #         --firstname Admin \
-  #         --lastname User \
-  #         --role Admin \
-  #         --email admin@example.com \
-  #         --password admin &&
-  #       airflow db check
-  #   environment:
-  #     - AIRFLOW__CORE__LOAD_EXAMPLES=False
-  #   healthcheck:
-  #     test: ["CMD", "airflow", "db", "check"]
-  #     interval: 10s
-  #     timeout: 10s
-  #     retries: 5
-
-  webserver:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    command: webserver
-    ports:
-      - "8080:8080"
-    volumes:
-      - ./dags:/opt/airflow/dags
-      - ./logs:/opt/airflow/logs
-    networks:
-      - code-with-deposit
-
-  scheduler:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    command: scheduler
-    volumes:
-      - ./dags:/opt/airflow/dags
-      - ./logs:/opt/airflow/logs
-    networks:
-      - code-with-deposit
 
   jupyter:
     build:
       context: .
       dockerfile: Dockerfile
-    command: jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root
     ports:
       - "8888:8888"
     volumes:
-      - ./notebooks:/home/airflow/notebooks
+      - ./dags:/opt/airflow/dags/
+      - ./logs:/opt/airflow/logs/
+      - ./notebooks:/opt/airflow/notebooks
+    depends_on:
+      - webserver
+      - spark-master
+    # environment:
+    #   - SPARK_MASTER=spark://spark-master:7077
+    #   - JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-arm64
     networks:
       - code-with-deposit
 
+  webserver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./dags:/opt/airflow/dags/
+      - ./logs:/opt/airflow/dags/
+    networks:
+      - code-with-deposit
+
+  # scheduler:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   depends_on:
+  #     - webserver
+  #   volumes:
+  #     - ./dags:/opt/airflow/dags/
+  #     - ./logs:/opt/airflow/dags/
+  #   networks:
+  #     - code-with-deposit
+
 networks:
   code-with-deposit:
+    driver: bridge

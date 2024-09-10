@@ -1,29 +1,16 @@
-# # Start Jupyter Lab in the background
-# jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root &
-
-# # Run the command passed to docker run
-# exec "$@"
-
 #!/bin/bash
-set -e
 
-# Initialize Airflow database if it hasn't been initialized
-airflow db init
+# Initialize the database
+airflow db migrate
 
-# Create admin user if it doesn't exist
-airflow users list | grep -q admin || \
-airflow users create \
-    --username admin \
-    --firstname Admin \
-    --lastname User \
-    --role Admin \
-    --email admin@example.com \
-    --password admin
+# Create an admin user if it doesn't exist
+airflow users create --username admin --password admin --firstname admin --lastname admin --role Admin --email admin@examples.com || true
 
-# Start Jupyter Lab in the background if the command is jupyter
-if [ "$1" = "jupyter" ]; then
-  jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root &
-fi
+# Run the scheduler in the background
+airflow scheduler &
 
-# Run the command passed to docker run
-exec "$@"
+# Run the web server in the background
+airflow webserver &
+
+# Run Jupyter Notebook in the foreground
+exec jupyter notebook --ip='*' --NotebookApp.token='' --NotebookApp.password='' --allow-root
