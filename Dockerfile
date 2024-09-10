@@ -24,22 +24,19 @@ ENV SPARK_VERSION=3.4.1
 ENV HADOOP_VERSION=3
 ENV SPARK_HOME=/opt/spark
 
-# RUN mkdir -p ${SPARK_HOME} && \
-#     curl -sL https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz | tar -xz -C ${SPARK_HOME} --strip-components=1
-# Copy Spark source file from current directory
-COPY ./source/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz /tmp/
-
-# Create Spark directory and extract the archive
 RUN mkdir -p ${SPARK_HOME} && \
-    tar -xzf /tmp/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz -C ${SPARK_HOME} --strip-components=1 && \
-    rm /tmp/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz
+    curl -sL https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz | tar -xz -C ${SPARK_HOME} --strip-components=1
 
-# Set Spark environment variables
-# ENV PATH=$PATH:${SPARK_HOME}/bin
+# Copy Spark source file from current directory
+# COPY ./source/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz /tmp/
+# Create Spark directory and extract the archive
+# RUN mkdir -p ${SPARK_HOME} && \
+#     tar -xzf /tmp/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz -C ${SPARK_HOME} --strip-components=1 && \
+#     rm /tmp/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz
 
-# # Download JDBC driver
-# RUN curl -O https://jdbc.postgresql.org/download/postgresql-42.6.0.jar && \
-#     mv postgresql-42.6.0.jar ${SPARK_HOME}/jars/
+# Download JDBC driver
+RUN curl -O https://jdbc.postgresql.org/download/postgresql-42.6.0.jar && \
+    mv postgresql-42.6.0.jar ${SPARK_HOME}/jars/
 
 USER airflow
 
@@ -59,7 +56,8 @@ RUN pip install --no-cache-dir \
     apache-airflow-providers-apache-spark \
     apache-airflow-providers-jdbc
 
-        
+# Set Spark environment variables
+# ENV PATH=$PATH:${SPARK_HOME}/bin   
 ENV JAVA_HOME /usr/lib/jvm/java-1.8.0-openjdk-arm64
 RUN export JAVA_HOME
 ENV PATH $PATH:$JAVA_HOME/bin
