@@ -13,4 +13,6 @@ airflow scheduler &
 airflow webserver &
 
 # Run Jupyter Notebook in the foreground
-exec jupyter notebook --ip='*' --NotebookApp.token='' --NotebookApp.password='' --allow-root
+# exec jupyter notebook --ip='*' --NotebookApp.token='' --NotebookApp.password='' --allow-root
+# Run Jupyter Notebook in the foreground
+jupyter notebook --ip='*' --allow-root

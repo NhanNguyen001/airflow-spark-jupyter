@@ -2,10 +2,6 @@ FROM apache/airflow:slim-latest-python3.11
 
 USER root
 
-# Copy entrypoint script
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
 # Set Airflow base URL
 ENV AIRFLOW__WEBSERVER__BASE_URL=/airflow
 
@@ -24,19 +20,23 @@ ENV SPARK_VERSION=3.4.1
 ENV HADOOP_VERSION=3
 ENV SPARK_HOME=/opt/spark
 
-RUN mkdir -p ${SPARK_HOME} && \
-    curl -sL https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz | tar -xz -C ${SPARK_HOME} --strip-components=1
+# RUN mkdir -p ${SPARK_HOME} && \
+#     curl -sL https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz | tar -xz -C ${SPARK_HOME} --strip-components=1
 
 # Copy Spark source file from current directory
-# COPY ./source/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz /tmp/
-# Create Spark directory and extract the archive
-# RUN mkdir -p ${SPARK_HOME} && \
-#     tar -xzf /tmp/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz -C ${SPARK_HOME} --strip-components=1 && \
-#     rm /tmp/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz
+COPY ./source/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz /tmp/
+#Create Spark directory and extract the archive
+RUN mkdir -p ${SPARK_HOME} && \
+    tar -xzf /tmp/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz -C ${SPARK_HOME} --strip-components=1 && \
+    rm /tmp/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz
 
 # Download JDBC driver
 RUN curl -O https://jdbc.postgresql.org/download/postgresql-42.6.0.jar && \
     mv postgresql-42.6.0.jar ${SPARK_HOME}/jars/
+
+# Copy entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 USER airflow
 
@@ -83,6 +83,9 @@ RUN mkdir -p /home/airflow/.jupyter
 RUN echo "c.NotebookApp.base_url = '/jupyter'" >> /home/airflow/.jupyter/jupyter_notebook_config.py
 RUN echo "c.NotebookApp.allow_origin = '*'" >> /home/airflow/.jupyter/jupyter_notebook_config.py
 RUN echo "c.NotebookApp.disable_check_xsrf = True" >> /home/airflow/.jupyter/jupyter_notebook_config.py
+RUN python -c "from jupyter_server.auth import passwd; print(passwd('1_Abc_123', 'sha1'))" > /tmp/sha1.txt
+RUN echo "c.NotebookApp.password = u'$(cat /tmp/sha1.txt)'" >> /home/airflow/.jupyter/jupyter_notebook_config.py
+RUN rm /tmp/sha1.txt
 
 # Set the entrypoint
 ENTRYPOINT ["/entrypoint.sh"]
